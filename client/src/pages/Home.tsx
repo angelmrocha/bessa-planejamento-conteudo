@@ -1,13 +1,18 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, MessageCircle, Target, Instagram } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar, MessageCircle, Target, Instagram, ChevronDown, ChevronUp } from "lucide-react";
+import { useState, useEffect } from "react";
 
 const weeks = [
   {
     week: 1,
     posts: [
       {
+        id: "1-1",
         day: "Segunda",
         editorial: "Agronegócio",
         format: "Carrossel",
@@ -16,6 +21,7 @@ const weeks = [
         story: "Enquete: Você sabia que a reforma tributária afeta o agronegócio? (Sim/Não)"
       },
       {
+        id: "1-2",
         day: "Quarta",
         editorial: "Institucional",
         format: "Post Normal",
@@ -24,6 +30,7 @@ const weeks = [
         story: "Caixinha de perguntas: Dúvidas sobre a reforma tributária para empresas?"
       },
       {
+        id: "1-3",
         day: "Sexta",
         editorial: "Direito Tributário",
         format: "Carrossel",
@@ -37,6 +44,7 @@ const weeks = [
     week: 2,
     posts: [
       {
+        id: "2-1",
         day: "Segunda",
         editorial: "Agronegócio",
         format: "Post Normal",
@@ -45,6 +53,7 @@ const weeks = [
         story: "Enquete: Você já pensou em holding rural para proteger seu patrimônio?"
       },
       {
+        id: "2-2",
         day: "Quarta",
         editorial: "Institucional",
         format: "Carrossel",
@@ -53,6 +62,7 @@ const weeks = [
         story: "Caixinha de perguntas: Servidor público, você conhece seus direitos a valores acumulados?"
       },
       {
+        id: "2-3",
         day: "Sexta",
         editorial: "Direito Público/Previdenciário",
         format: "Post Normal",
@@ -66,6 +76,7 @@ const weeks = [
     week: 3,
     posts: [
       {
+        id: "3-1",
         day: "Segunda",
         editorial: "Direito Tributário",
         format: "Post Normal",
@@ -74,6 +85,7 @@ const weeks = [
         story: "Enquete: Sua empresa está preparada para as mudanças tributárias de 2026?"
       },
       {
+        id: "3-2",
         day: "Quarta",
         editorial: "Agronegócio",
         format: "Carrossel",
@@ -82,6 +94,7 @@ const weeks = [
         story: "Caixinha de perguntas: Produtor rural, qual sua maior preocupação com o ITCMD progressivo?"
       },
       {
+        id: "3-3",
         day: "Sexta",
         editorial: "Institucional",
         format: "Post Normal",
@@ -95,6 +108,7 @@ const weeks = [
     week: 4,
     posts: [
       {
+        id: "4-1",
         day: "Segunda",
         editorial: "Direito Público/Previdenciário",
         format: "Post Normal",
@@ -103,6 +117,7 @@ const weeks = [
         story: "Enquete: Professor, você já revisou sua aposentadoria?"
       },
       {
+        id: "4-2",
         day: "Quarta",
         editorial: "Institucional",
         format: "Carrossel",
@@ -111,6 +126,7 @@ const weeks = [
         story: "Caixinha de perguntas: Qual valor você mais busca em um escritório de advocacia?"
       },
       {
+        id: "4-3",
         day: "Sexta",
         editorial: "Direito Tributário",
         format: "Post Normal",
@@ -121,6 +137,16 @@ const weeks = [
     ]
   }
 ];
+
+interface PostNotes {
+  [key: string]: {
+    status: string;
+    observations: string;
+    changes: string;
+    publishDate: string;
+    performance: string;
+  };
+}
 
 const getEditorialColor = (editorial: string) => {
   switch (editorial) {
@@ -141,7 +167,56 @@ const getFormatColor = (format: string) => {
   return format === "Carrossel" ? "bg-indigo-50 text-indigo-700" : "bg-cyan-50 text-cyan-700";
 };
 
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case "publicado":
+      return "bg-green-100 text-green-800";
+    case "em-producao":
+      return "bg-yellow-100 text-yellow-800";
+    case "aguardando":
+      return "bg-red-100 text-red-800";
+    default:
+      return "bg-gray-100 text-gray-800";
+  }
+};
+
 export default function Home() {
+  const [postNotes, setPostNotes] = useState<PostNotes>({});
+  const [expandedPost, setExpandedPost] = useState<string | null>(null);
+
+  // Carregar dados do localStorage ao montar
+  useEffect(() => {
+    const saved = localStorage.getItem("bessaPostNotes");
+    if (saved) {
+      setPostNotes(JSON.parse(saved));
+    }
+  }, []);
+
+  // Salvar dados no localStorage quando mudam
+  useEffect(() => {
+    localStorage.setItem("bessaPostNotes", JSON.stringify(postNotes));
+  }, [postNotes]);
+
+  const updatePostNote = (postId: string, field: string, value: string) => {
+    setPostNotes(prev => ({
+      ...prev,
+      [postId]: {
+        ...prev[postId],
+        [field]: value
+      }
+    }));
+  };
+
+  const getPostNote = (postId: string) => {
+    return postNotes[postId] || {
+      status: "planejado",
+      observations: "",
+      changes: "",
+      publishDate: "",
+      performance: ""
+    };
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Header */}
@@ -176,53 +251,142 @@ export default function Home() {
           {weeks.map((weekData) => (
             <TabsContent key={`week-${weekData.week}`} value={`week-${weekData.week}`} className="space-y-6">
               <div className="grid gap-6">
-                {weekData.posts.map((post, idx) => (
-                  <Card key={idx} className="overflow-hidden hover:shadow-lg transition-shadow">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Calendar className="w-4 h-4 text-slate-500" />
-                            <CardTitle className="text-lg">{post.day}-feira</CardTitle>
+                {weekData.posts.map((post) => {
+                  const note = getPostNote(post.id);
+                  const isExpanded = expandedPost === post.id;
+
+                  return (
+                    <Card key={post.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Calendar className="w-4 h-4 text-slate-500" />
+                              <CardTitle className="text-lg">{post.day}-feira</CardTitle>
+                            </div>
+                            <div className="flex gap-2 flex-wrap">
+                              <Badge variant="outline" className={getEditorialColor(post.editorial)}>
+                                {post.editorial}
+                              </Badge>
+                              <Badge className={getFormatColor(post.format)}>
+                                {post.format}
+                              </Badge>
+                              <Badge className={getStatusColor(note.status)}>
+                                {note.status === "planejado" && "Planejado"}
+                                {note.status === "em-producao" && "Em Produção"}
+                                {note.status === "publicado" && "Publicado"}
+                                {note.status === "aguardando" && "Aguardando Aprovação"}
+                              </Badge>
+                            </div>
                           </div>
-                          <div className="flex gap-2 flex-wrap">
-                            <Badge variant="outline" className={getEditorialColor(post.editorial)}>
-                              {post.editorial}
-                            </Badge>
-                            <Badge className={getFormatColor(post.format)}>
-                              {post.format}
-                            </Badge>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setExpandedPost(isExpanded ? null : post.id)}
+                          >
+                            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                          </Button>
+                        </div>
+                      </CardHeader>
+
+                      <CardContent className="space-y-4">
+                        {/* Tema */}
+                        <div>
+                          <h4 className="font-semibold text-slate-900 mb-1">Tema do Post:</h4>
+                          <p className="text-slate-700 leading-relaxed">{post.theme}</p>
+                        </div>
+
+                        {/* Gancho */}
+                        <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                          <h4 className="font-semibold text-slate-900 mb-1 text-sm">Gancho/Foco:</h4>
+                          <p className="text-slate-700 text-sm">{post.hook}</p>
+                        </div>
+
+                        {/* Story */}
+                        <div className="bg-gradient-to-r from-pink-50 to-purple-50 p-3 rounded-lg border border-pink-200">
+                          <div className="flex items-start gap-2">
+                            <MessageCircle className="w-4 h-4 text-pink-600 mt-0.5 flex-shrink-0" />
+                            <div>
+                              <h4 className="font-semibold text-slate-900 mb-1 text-sm">Sugestão de Story:</h4>
+                              <p className="text-slate-700 text-sm">{post.story}</p>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </CardHeader>
 
-                    <CardContent className="space-y-4">
-                      {/* Tema */}
-                      <div>
-                        <h4 className="font-semibold text-slate-900 mb-1">Tema do Post:</h4>
-                        <p className="text-slate-700 leading-relaxed">{post.theme}</p>
-                      </div>
+                        {/* Painel de Anotações (Expansível) */}
+                        {isExpanded && (
+                          <div className="mt-6 pt-6 border-t border-slate-200 space-y-4">
+                            <h4 className="font-bold text-slate-900">Painel de Anotações e Observações</h4>
 
-                      {/* Gancho */}
-                      <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
-                        <h4 className="font-semibold text-slate-900 mb-1 text-sm">Gancho/Foco:</h4>
-                        <p className="text-slate-700 text-sm">{post.hook}</p>
-                      </div>
+                            {/* Status */}
+                            <div>
+                              <label className="block text-sm font-semibold text-slate-900 mb-2">Status</label>
+                              <Select value={note.status} onValueChange={(value) => updatePostNote(post.id, "status", value)}>
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="planejado">Planejado</SelectItem>
+                                  <SelectItem value="em-producao">Em Produção</SelectItem>
+                                  <SelectItem value="publicado">Publicado</SelectItem>
+                                  <SelectItem value="aguardando">Aguardando Aprovação</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
 
-                      {/* Story */}
-                      <div className="bg-gradient-to-r from-pink-50 to-purple-50 p-3 rounded-lg border border-pink-200">
-                        <div className="flex items-start gap-2">
-                          <MessageCircle className="w-4 h-4 text-pink-600 mt-0.5 flex-shrink-0" />
-                          <div>
-                            <h4 className="font-semibold text-slate-900 mb-1 text-sm">Sugestão de Story:</h4>
-                            <p className="text-slate-700 text-sm">{post.story}</p>
+                            {/* Data de Publicação */}
+                            <div>
+                              <label className="block text-sm font-semibold text-slate-900 mb-2">Data de Publicação</label>
+                              <input
+                                type="date"
+                                value={note.publishDate}
+                                onChange={(e) => updatePostNote(post.id, "publishDate", e.target.value)}
+                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            </div>
+
+                            {/* Observações */}
+                            <div>
+                              <label className="block text-sm font-semibold text-slate-900 mb-2">Observações</label>
+                              <Textarea
+                                placeholder="Adicione observações sobre este post..."
+                                value={note.observations}
+                                onChange={(e) => updatePostNote(post.id, "observations", e.target.value)}
+                                className="min-h-24"
+                              />
+                            </div>
+
+                            {/* Alterações Sugeridas */}
+                            <div>
+                              <label className="block text-sm font-semibold text-slate-900 mb-2">Alterações Sugeridas</label>
+                              <Textarea
+                                placeholder="Descreva as alterações ou ajustes necessários..."
+                                value={note.changes}
+                                onChange={(e) => updatePostNote(post.id, "changes", e.target.value)}
+                                className="min-h-24"
+                              />
+                            </div>
+
+                            {/* Desempenho */}
+                            <div>
+                              <label className="block text-sm font-semibold text-slate-900 mb-2">Desempenho (Opcional)</label>
+                              <Textarea
+                                placeholder="Registre dados de desempenho: salvamentos, compartilhamentos, alcance, etc."
+                                value={note.performance}
+                                onChange={(e) => updatePostNote(post.id, "performance", e.target.value)}
+                                className="min-h-24"
+                              />
+                            </div>
+
+                            <div className="bg-blue-50 p-3 rounded-lg border border-blue-200 text-sm text-blue-800">
+                              ✓ Todas as anotações são salvas automaticamente no navegador
+                            </div>
                           </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             </TabsContent>
           ))}
@@ -280,7 +444,7 @@ export default function Home() {
             <div>
               <h3 className="text-xl font-bold mb-2">Resumo Executivo</h3>
               <p className="leading-relaxed">
-                Este planejamento de conteúdo foi estruturado para consolidar a autoridade da Bessa Sociedade de Advogados no Instagram durante o primeiro mês. Com 12 posts estrategicamente distribuídos (3 por semana) alternando entre Posts Normais e Carrosséis, complementados por sugestões de stories diários, o objetivo é criar uma presença digital consistente e profissional. O foco em conteúdo educativo sobre Agronegócio, Direito Tributário (Reforma 2026) e Direito Público/Previdenciário, sem a exposição direta dos advogados neste momento, prepara o terreno para a entrada dos vídeos no próximo mês. As métricas de sucesso serão medidas através do engajamento qualificado, interação nos stories, crescimento orgânico de seguidores e estabelecimento de um padrão visual profissional.
+                Este planejamento de conteúdo foi estruturado para consolidar a autoridade da Bessa Sociedade de Advogados no Instagram durante o primeiro mês. Com 12 posts estrategicamente distribuídos (3 por semana) alternando entre Posts Normais e Carrosséis, complementados por sugestões de stories diários, o objetivo é criar uma presença digital consistente e profissional. O painel de anotações permite que a equipe responsável pela publicação registre observações, alterações, status e desempenho de cada post em tempo real.
               </p>
             </div>
           </div>
