@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar, MessageCircle, Target, Instagram, ChevronDown, ChevronUp } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 const weeks = [
   {
@@ -181,6 +182,10 @@ const getStatusColor = (status: string) => {
 };
 
 export default function Home() {
+  // The userAuth hooks provides authentication state
+  // To implement login/logout functionality, simply call logout() or redirect to getLoginUrl()
+  let { user, loading, error, isAuthenticated, logout } = useAuth();
+
   const [postNotes, setPostNotes] = useState<PostNotes>({});
   const [expandedPost, setExpandedPost] = useState<string | null>(null);
 
