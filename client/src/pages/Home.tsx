@@ -4,9 +4,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, MessageCircle, Target, Instagram, ChevronDown, ChevronUp } from "lucide-react";
+import { Calendar, MessageCircle, Target, Instagram, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
+import { getLoginUrl } from "@/const";
 
 const weeks = [
   {
@@ -182,27 +185,39 @@ const getStatusColor = (status: string) => {
 };
 
 export default function Home() {
-  // The userAuth hooks provides authentication state
-  // To implement login/logout functionality, simply call logout() or redirect to getLoginUrl()
-  let { user, loading, error, isAuthenticated, logout } = useAuth();
+  let { user, loading, isAuthenticated } = useAuth();
 
   const [postNotes, setPostNotes] = useState<PostNotes>({});
   const [expandedPost, setExpandedPost] = useState<string | null>(null);
 
-  // Carregar dados do localStorage ao montar
+  const saveNoteMutation = trpc.posts.saveNote.useMutation();
+  const getNotesQuery = trpc.posts.getNotes.useQuery(
+    { userId: user?.id || 0 },
+    { enabled: !!user?.id }
+  );
+
+  // Carregar dados do banco de dados ao montar
   useEffect(() => {
-    const saved = localStorage.getItem("bessaPostNotes");
-    if (saved) {
-      setPostNotes(JSON.parse(saved));
+    if (user?.id && getNotesQuery.data?.data) {
+      const notesFromDb = getNotesQuery.data.data;
+      const notesMap: PostNotes = {};
+      
+      notesFromDb.forEach((note: any) => {
+        notesMap[note.postId] = {
+          status: note.status || "planejado",
+          observations: note.observations || "",
+          changes: note.changes || "",
+          publishDate: note.publishDate || "",
+          performance: note.performance || ""
+        };
+      });
+      
+      setPostNotes(notesMap);
     }
-  }, []);
+  }, [user?.id, getNotesQuery.data]);
 
-  // Salvar dados no localStorage quando mudam
-  useEffect(() => {
-    localStorage.setItem("bessaPostNotes", JSON.stringify(postNotes));
-  }, [postNotes]);
-
-  const updatePostNote = (postId: string, field: string, value: string) => {
+  const updatePostNote = async (postId: string, field: string, value: string) => {
+    // Atualizar estado local
     setPostNotes(prev => ({
       ...prev,
       [postId]: {
@@ -210,6 +225,34 @@ export default function Home() {
         [field]: value
       }
     }));
+
+    // Salvar no banco de dados
+    if (user?.id) {
+      try {
+        const currentNote = postNotes[postId] || {
+          status: "planejado",
+          observations: "",
+          changes: "",
+          publishDate: "",
+          performance: ""
+        };
+
+        await saveNoteMutation.mutateAsync({
+          postId,
+          userId: user.id,
+          status: field === "status" ? value : currentNote.status,
+          observations: field === "observations" ? value : currentNote.observations,
+          changes: field === "changes" ? value : currentNote.changes,
+          publishDate: field === "publishDate" ? value : currentNote.publishDate,
+          performance: field === "performance" ? value : currentNote.performance
+        });
+
+        toast.success("Anotação salva com sucesso!");
+      } catch (error) {
+        console.error("Erro ao salvar anotação:", error);
+        toast.error("Erro ao salvar anotação");
+      }
+    }
   };
 
   const getPostNote = (postId: string) => {
@@ -222,18 +265,50 @@ export default function Home() {
     };
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+        <Card className="max-w-md">
+          <CardHeader>
+            <CardTitle>Acesso Restrito</CardTitle>
+            <CardDescription>Você precisa fazer login para acessar o planejamento de conteúdo.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild className="w-full">
+              <a href={getLoginUrl()}>Fazer Login</a>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Header */}
       <header className="bg-white border-b border-slate-200 shadow-sm">
         <div className="container py-8">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
-              <Instagram className="w-6 h-6 text-white" />
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
+                <Instagram className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-slate-900">Bessa Sociedade de Advogados</h1>
+                <p className="text-slate-600">Planejamento de Conteúdo - Mês 1 (Instagram)</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900">Bessa Sociedade de Advogados</h1>
-              <p className="text-slate-600">Planejamento de Conteúdo - Mês 1 (Instagram)</p>
+            <div className="text-right">
+              <p className="text-sm text-slate-600">Logado como:</p>
+              <p className="font-semibold text-slate-900">{user?.name || user?.email}</p>
             </div>
           </div>
           <p className="text-slate-700 leading-relaxed">
@@ -384,7 +459,7 @@ export default function Home() {
                             </div>
 
                             <div className="bg-blue-50 p-3 rounded-lg border border-blue-200 text-sm text-blue-800">
-                              ✓ Todas as anotações são salvas automaticamente no navegador
+                              ✓ Todas as anotações são salvas automaticamente no banco de dados
                             </div>
                           </div>
                         )}
@@ -449,7 +524,7 @@ export default function Home() {
             <div>
               <h3 className="text-xl font-bold mb-2">Resumo Executivo</h3>
               <p className="leading-relaxed">
-                Este planejamento de conteúdo foi estruturado para consolidar a autoridade da Bessa Sociedade de Advogados no Instagram durante o primeiro mês. Com 12 posts estrategicamente distribuídos (3 por semana) alternando entre Posts Normais e Carrosséis, complementados por sugestões de stories diários, o objetivo é criar uma presença digital consistente e profissional. O painel de anotações permite que a equipe responsável pela publicação registre observações, alterações, status e desempenho de cada post em tempo real.
+                Este planejamento de conteúdo foi estruturado para consolidar a autoridade da Bessa Sociedade de Advogados no Instagram durante o primeiro mês. Com 12 posts estrategicamente distribuídos (3 por semana) alternando entre Posts Normais e Carrosséis, complementados por sugestões de stories diários, o objetivo é criar uma presença digital consistente e profissional. O painel de anotações permite que a equipe responsável pela publicação registre observações, alterações, status e desempenho de cada post em tempo real, com todos os dados salvos automaticamente no banco de dados.
               </p>
             </div>
           </div>

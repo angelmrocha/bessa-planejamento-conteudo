@@ -25,4 +25,23 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
+/**
+ * Tabela para armazenar anotações dos posts do calendário editorial
+ */
+export const postNotes = mysqlTable("postNotes", {
+  id: int("id").autoincrement().primaryKey(),
+  postId: varchar("postId", { length: 64 }).notNull(),
+  userId: int("userId").notNull(),
+  status: varchar("status", { length: 50 }).default("planejado").notNull(),
+  observations: text("observations"),
+  changes: text("changes"),
+  publishDate: varchar("publishDate", { length: 50 }),
+  performance: text("performance"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PostNote = typeof postNotes.$inferSelect;
+export type InsertPostNote = typeof postNotes.$inferInsert;
+
 // TODO: Add your tables here

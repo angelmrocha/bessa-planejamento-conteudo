@@ -8,6 +8,13 @@
       "when": 1775080662142,
       "tag": "0000_magical_blade",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1775127185931,
+      "tag": "0001_common_living_mummy",
+      "breakpoints": true
     }
   ]
 }

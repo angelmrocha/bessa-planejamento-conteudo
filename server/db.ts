@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, postNotes, InsertPostNote } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -87,6 +87,94 @@ export async function getUserByOpenId(openId: string) {
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
 
   return result.length > 0 ? result[0] : undefined;
+}
+
+/**
+ * Salva ou atualiza uma anotação de post
+ */
+export async function upsertPostNote(
+  postId: string,
+  userId: number,
+  data: Partial<InsertPostNote>
+) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot upsert post note: database not available");
+    return undefined;
+  }
+
+  try {
+    const existing = await db
+      .select()
+      .from(postNotes)
+      .where(
+        and(
+          eq(postNotes.postId, postId),
+          eq(postNotes.userId, userId)
+        )
+      )
+      .limit(1);
+
+    if (existing.length > 0) {
+      // Atualizar
+      await db
+        .update(postNotes)
+        .set(data)
+        .where(
+          and(
+            eq(postNotes.postId, postId),
+            eq(postNotes.userId, userId)
+          )
+        );
+    } else {
+      // Inserir
+      await db.insert(postNotes).values({
+        postId,
+        userId,
+        ...data,
+      } as InsertPostNote);
+    }
+
+    // Retornar o registro atualizado
+    const result = await db
+      .select()
+      .from(postNotes)
+      .where(
+        and(
+          eq(postNotes.postId, postId),
+          eq(postNotes.userId, userId)
+        )
+      )
+      .limit(1);
+
+    return result[0];
+  } catch (error) {
+    console.error("[Database] Failed to upsert post note:", error);
+    throw error;
+  }
+}
+
+/**
+ * Recupera anotações de um post para um usuário
+ */
+export async function getPostNotesByUser(userId: number) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get post notes: database not available");
+    return [];
+  }
+
+  try {
+    const result = await db
+      .select()
+      .from(postNotes)
+      .where(eq(postNotes.userId, userId));
+
+    return result;
+  } catch (error) {
+    console.error("[Database] Failed to get post notes:", error);
+    throw error;
+  }
 }
 
 // TODO: add feature queries here as your schema grows.
